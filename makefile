@@ -1,0 +1,41 @@
+SRC_DIR := src
+BIN_DIR := bin
+INC_DIR := include
+
+CXX := g++
+CXXFLAGS := -std=c++17 -Wall -Wextra -Iinclude -pipe
+LIBS := -lsfml-graphics -lsfml-window -lsfml-system -lsfml-audio
+
+export TMP := $(CURDIR)/tmp
+export TEMP := $(CURDIR)/tmp
+export TMPDIR := $(CURDIR)/tmp
+
+TARGET := $(BIN_DIR)/arkanoid.exe
+SOURCES := $(wildcard $(SRC_DIR)/*.cpp)
+OBJECTS := $(SOURCES:$(SRC_DIR)/%.cpp=$(BIN_DIR)/%.o)
+
+all: tmp $(BIN_DIR) $(TARGET)
+
+tmp:
+	mkdir -p tmp
+
+$(BIN_DIR):
+	mkdir -p $(BIN_DIR)
+
+$(TARGET): $(OBJECTS)
+	$(CXX) $(OBJECTS) -o $(TARGET) $(LIBS)
+
+$(BIN_DIR)/%.o: $(SRC_DIR)/%.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+run: $(TARGET)
+	@echo "Abriendo Arkanoid con el explorador de Windows..."
+	@explorer.exe "$(shell cygpath -w $(CURDIR)/$(TARGET))"
+
+clean:
+	rm -rf $(BIN_DIR)/*.o $(TARGET)
+
+distclean:
+	rm -rf $(BIN_DIR) tmp
+
+.PHONY: all run clean distclean tmp

@@ -1,0 +1,25 @@
+# Archivos compilados
+*.o
+*.exe
+*.out
+*.app
+
+# Directorios de compilación
+bin/
+build/
+
+# Archivos de VS Code
+.vscode/
+*.code-workspace
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Archivos temporales
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
