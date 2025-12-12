@@ -57,3 +57,21 @@ float Ball::GetRadius() const {
 sf::FloatRect Ball::GetBounds() const {
     return shape.getGlobalBounds();
 }
+
+void Ball::IncreaseSpeed(float percentage) {
+    // Aumentar velocidad manteniendo la dirección
+    float currentMagnitude = std::sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+    if (currentMagnitude > 0) {
+        sf::Vector2f direction = velocity / currentMagnitude;
+        speed *= (1.0f + percentage / 100.0f);
+        velocity = direction * speed;
+    }
+}
+
+void Ball::ResetSpeed() {
+    speed = 300.0f;
+}
+
+float Ball::GetSpeed() const {
+    return speed;
+}

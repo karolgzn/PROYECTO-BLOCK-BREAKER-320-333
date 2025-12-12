@@ -1,7 +1,7 @@
 #include "Paddle.hpp"
 
 Paddle::Paddle(float x, float y, float width, float height) 
-    : speed(400.0f), width(width), height(height) {
+    : speed(448.0f), width(width), height(height) {  // 400 * 1.12 = 448
     shape.setSize(sf::Vector2f(width, height));
     shape.setOrigin(width / 2.0f, height / 2.0f);
     shape.setPosition(x, y);
