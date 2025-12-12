@@ -16,6 +16,7 @@ enum GameState {
     PLAYING,
     BOSS_FIGHT,
     CONTROLS,
+    SKIN_SELECTION,
     GAME_OVER
 };
 
@@ -42,14 +43,14 @@ void CreateButton(sf::RectangleShape& button, sf::Text& text, const std::string&
                   float x, float y, float width, float height, const sf::Font& font) {
     button.setSize(sf::Vector2f(width, height));
     button.setPosition(x, y);
-    button.setFillColor(sf::Color(70, 70, 100));
-    button.setOutlineThickness(3);
-    button.setOutlineColor(sf::Color::White);
+    button.setFillColor(sf::Color(25, 25, 80));  // Azul oscuro retro
+    button.setOutlineThickness(5);  // Borde mas grueso estilo retro
+    button.setOutlineColor(sf::Color(0, 255, 255));  // Cyan brillante
     
     text.setFont(font);
     text.setString(label);
-    text.setCharacterSize(24);
-    text.setFillColor(sf::Color::White);
+    text.setCharacterSize(28);  // Texto mas grande
+    text.setFillColor(sf::Color(255, 255, 0));  // Amarillo brillante
     
     sf::FloatRect textBounds = text.getLocalBounds();
     text.setOrigin(textBounds.left + textBounds.width / 2.0f, 
@@ -112,6 +113,7 @@ int main() {
     int lastSpeedIncreaseScore = 0;
     const float MAX_BALL_SPEED = 675.0f; // 125% mas rapido (2.25x velocidad inicial)
     bool paddleSpeedBoosted = false;
+    int selectedSkin = 2; // 0=hotdog, 1=laboratorio, 2=original (default), 3=pan, 4=sable, 5=trampolin
     
     // Crear objetos del juego
     Ball ball(WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f, BALL_RADIUS);
@@ -197,6 +199,29 @@ int main() {
         std::cerr << "Error cargando fondo.png" << std::endl;
     }
     
+    // Texturas de preview de skins
+    std::vector<sf::Texture> skinTextures(6);
+    std::vector<sf::Sprite> skinSprites(6);
+    std::vector<std::string> skinNames = {"Hotdog", "Laboratorio", "Original", "Pan", "Sable", "Trampolin"};
+    std::vector<std::string> skinFiles = {
+        "assets/hotdog.png",
+        "assets/laboratorio.png", 
+        "assets/original.png",
+        "assets/pan.png",
+        "assets/sable.png",
+        "assets/trampolin.png"
+    };
+    
+    for (int i = 0; i < 6; i++) {
+        if (skinTextures[i].loadFromFile(skinFiles[i])) {
+            skinSprites[i].setTexture(skinTextures[i]);
+            // Escalar a 150px ancho x 15px alto
+            float scaleX = 150.0f / skinTextures[i].getSize().x;
+            float scaleY = 15.0f / skinTextures[i].getSize().y;
+            skinSprites[i].setScale(scaleX, scaleY);
+        }
+    }
+    
     if (fontLoaded) {
         scoreText.setFont(font);
         scoreText.setCharacterSize(20);
@@ -210,8 +235,8 @@ int main() {
     
     // Elementos del menu
     sf::Text titleText;
-    sf::RectangleShape playButton, controlsButton, exitButton;
-    sf::Text playText, controlsText, exitText;
+    sf::RectangleShape playButton, controlsButton, skinsButton, exitButton;
+    sf::Text playText, controlsText, skinsText, exitText;
     sf::RectangleShape backButton;
     sf::Text backText;
     
@@ -223,57 +248,131 @@ int main() {
         // Titulo del juego
         titleText.setFont(font);
         titleText.setString("ARKANOID");
-        titleText.setCharacterSize(72);
-        titleText.setFillColor(sf::Color::Cyan);
+        titleText.setCharacterSize(96);  // Titulo mas grande
+        titleText.setFillColor(sf::Color(255, 0, 255));  // Magenta brillante
         titleText.setStyle(sf::Text::Bold);
+        titleText.setOutlineThickness(5);  // Borde mas grueso
+        titleText.setOutlineColor(sf::Color(255, 255, 0));  // Amarillo brillante
         sf::FloatRect titleBounds = titleText.getLocalBounds();
         titleText.setOrigin(titleBounds.left + titleBounds.width / 2.0f, 
                            titleBounds.top + titleBounds.height / 2.0f);
-        titleText.setPosition(WINDOW_WIDTH / 2.0f, 120);
+        titleText.setPosition(WINDOW_WIDTH / 2.0f, 100);
         
-        // Crear botones del menu
+        // Crear botones del menu - mas grandes y espaciados
         CreateButton(playButton, playText, "INICIAR JUEGO", 
-                    WINDOW_WIDTH / 2.0f - 150, 250, 300, 60, font);
+                    WINDOW_WIDTH / 2.0f - 200, 220, 400, 70, font);
         CreateButton(controlsButton, controlsText, "CONTROLES", 
-                    WINDOW_WIDTH / 2.0f - 150, 330, 300, 60, font);
+                    WINDOW_WIDTH / 2.0f - 200, 310, 400, 70, font);
+        CreateButton(skinsButton, skinsText, "SKINS", 
+                    WINDOW_WIDTH / 2.0f - 200, 400, 400, 70, font);
         CreateButton(exitButton, exitText, "SALIR", 
-                    WINDOW_WIDTH / 2.0f - 150, 410, 300, 60, font);
+                    WINDOW_WIDTH / 2.0f - 200, 490, 400, 70, font);
         
         // Boton de regresar (para pantalla de controles)
         CreateButton(backButton, backText, "REGRESAR", 
-                    WINDOW_WIDTH / 2.0f - 100, 500, 200, 50, font);
+                    WINDOW_WIDTH / 2.0f - 120, 500, 240, 50, font);
         
-        // Botones de Game Over
+        // Botones de Game Over - 2 arriba muy juntos, 1 abajo mas grande
         CreateButton(gameOverMenuButton, gameOverMenuText, "MENU", 
-                    WINDOW_WIDTH / 2.0f - 350, 350, 200, 60, font);
-        CreateButton(gameOverRetryButton, gameOverRetryText, "REINTENTAR", 
-                    WINDOW_WIDTH / 2.0f - 100, 350, 200, 60, font);
+                    WINDOW_WIDTH / 2.0f - 230, 320, 220, 80, font);
         CreateButton(gameOverExitButton, gameOverExitText, "SALIR", 
-                    WINDOW_WIDTH / 2.0f + 150, 350, 200, 60, font);
+                    WINDOW_WIDTH / 2.0f + 10, 320, 220, 80, font);
+        CreateButton(gameOverRetryButton, gameOverRetryText, "REINTENTAR", 
+                    WINDOW_WIDTH / 2.0f - 160, 430, 320, 85, font);
     }
     
-    // Configurar musica de fondo
-    sf::Music backgroundMusic;
-    bool musicLoaded = false;
+    // SISTEMA DE MUSICA - Menu y Juego separados
+    sf::Music menuMusic;
+    sf::Music gameMusic;
+    bool menuMusicLoaded = false;
+    bool gameMusicLoaded = false;
+    GameState currentMusicState = MENU;
     
-    if (backgroundMusic.openFromFile("assets/music/background_music.ogg")) {
-        musicLoaded = true;
-        backgroundMusic.setLoop(true);
-        backgroundMusic.setVolume(50.0f); // 50% volumen
-        backgroundMusic.play();
-        std::cout << "Musica de fondo cargada y reproduciendo" << std::endl;
+    // Cargar musica del menu
+    if (menuMusic.openFromFile("assets/music/menu_music.ogg")) {
+        menuMusicLoaded = true;
+        menuMusic.setLoop(true);
+        menuMusic.setVolume(45.0f);
+        std::cout << "Musica del menu cargada" << std::endl;
     }
-    else if (backgroundMusic.openFromFile("assets/music/background_music.wav")) {
-        musicLoaded = true;
-        backgroundMusic.setLoop(true);
-        backgroundMusic.setVolume(50.0f);
-        backgroundMusic.play();
-        std::cout << "Musica de fondo cargada y reproduciendo" << std::endl;
+    else if (menuMusic.openFromFile("assets/music/menu_music.wav")) {
+        menuMusicLoaded = true;
+        menuMusic.setLoop(true);
+        menuMusic.setVolume(45.0f);
+        std::cout << "Musica del menu cargada" << std::endl;
     }
     else {
-        std::cout << "Advertencia: No se encontro musica de fondo. El juego seguira sin musica." << std::endl;
-        std::cout << "Coloca un archivo 'background_music.ogg' en assets/music/" << std::endl;
+        std::cout << "Advertencia: No se encontro musica del menu (menu_music.ogg)" << std::endl;
     }
+    
+    // Cargar musica del juego
+    if (gameMusic.openFromFile("assets/music/game_music.ogg")) {
+        gameMusicLoaded = true;
+        gameMusic.setLoop(true);
+        gameMusic.setVolume(50.0f);
+        std::cout << "Musica del juego cargada" << std::endl;
+    }
+    else if (gameMusic.openFromFile("assets/music/game_music.wav")) {
+        gameMusicLoaded = true;
+        gameMusic.setLoop(true);
+        gameMusic.setVolume(50.0f);
+        std::cout << "Musica del juego cargada" << std::endl;
+    }
+    else {
+        std::cout << "Advertencia: No se encontro musica del juego (game_music.ogg)" << std::endl;
+    }
+    
+    // Reproducir musica del menu al inicio
+    if (menuMusicLoaded) {
+        menuMusic.play();
+        currentMusicState = MENU;
+    }
+    
+    // SISTEMA DE EFECTOS DE SONIDO
+    sf::SoundBuffer paddleHitBuffer, blockHitBuffer, wallHitBuffer, powerUpBuffer;
+    sf::SoundBuffer loseLifeBuffer, gameOverBuffer, victoryBuffer, bossHitBuffer, bossDefeatedBuffer;
+    sf::Sound paddleHitSound, blockHitSound, wallHitSound, powerUpSound;
+    sf::Sound loseLifeSound, gameOverSound, victorySound, bossHitSound, bossDefeatedSound;
+    
+    // Cargar efectos de sonido
+    if (paddleHitBuffer.loadFromFile("assets/sounds/paddle_hit.wav")) {
+        paddleHitSound.setBuffer(paddleHitBuffer);
+        paddleHitSound.setVolume(70.0f);
+    }
+    if (blockHitBuffer.loadFromFile("assets/sounds/block_hit.wav")) {
+        blockHitSound.setBuffer(blockHitBuffer);
+        blockHitSound.setVolume(60.0f);
+    }
+    if (wallHitBuffer.loadFromFile("assets/sounds/wall_hit.wav")) {
+        wallHitSound.setBuffer(wallHitBuffer);
+        wallHitSound.setVolume(50.0f);
+    }
+    if (powerUpBuffer.loadFromFile("assets/sounds/powerup.wav")) {
+        powerUpSound.setBuffer(powerUpBuffer);
+        powerUpSound.setVolume(80.0f);
+    }
+    if (loseLifeBuffer.loadFromFile("assets/sounds/lose_life.wav")) {
+        loseLifeSound.setBuffer(loseLifeBuffer);
+        loseLifeSound.setVolume(90.0f);
+    }
+    if (gameOverBuffer.loadFromFile("assets/sounds/game_over.wav")) {
+        gameOverSound.setBuffer(gameOverBuffer);
+        gameOverSound.setVolume(80.0f);
+    }
+    if (victoryBuffer.loadFromFile("assets/sounds/victory.wav")) {
+        victorySound.setBuffer(victoryBuffer);
+        victorySound.setVolume(80.0f);
+    }
+    if (bossHitBuffer.loadFromFile("assets/sounds/boss_hit.wav")) {
+        bossHitSound.setBuffer(bossHitBuffer);
+        bossHitSound.setVolume(75.0f);
+    }
+    if (bossDefeatedBuffer.loadFromFile("assets/sounds/boss_defeated.wav")) {
+        bossDefeatedSound.setBuffer(bossDefeatedBuffer);
+        bossDefeatedSound.setVolume(90.0f);
+    }
+    
+    std::cout << "Sistema de sonido inicializado" << std::endl;
     
     // Reloj para delta time
     sf::Clock clock;
@@ -298,17 +397,44 @@ int main() {
                 if (gameState == MENU) {
                     if (IsMouseOver(playButton, mousePos)) {
                         gameState = PLAYING;
+                        paddle.SetSkin(selectedSkin);  // Aplicar la skin seleccionada
                         std::cout << "Juego iniciado desde el menu" << std::endl;
+                        // Cambiar a musica del juego
+                        if (menuMusicLoaded) menuMusic.stop();
+                        if (gameMusicLoaded) gameMusic.play();
+                        currentMusicState = PLAYING;
                     }
                     else if (IsMouseOver(controlsButton, mousePos)) {
                         gameState = CONTROLS;
                         std::cout << "Mostrando controles" << std::endl;
+                    }
+                    else if (IsMouseOver(skinsButton, mousePos)) {
+                        gameState = SKIN_SELECTION;
+                        std::cout << "Seleccion de skins" << std::endl;
                     }
                     else if (IsMouseOver(exitButton, mousePos)) {
                         window.close();
                     }
                 }
                 else if (gameState == CONTROLS) {
+                    if (IsMouseOver(backButton, mousePos)) {
+                        gameState = MENU;
+                    }
+                }
+                else if (gameState == SKIN_SELECTION) {
+                    // Botones de skins (3 arriba, 3 abajo)
+                    for (int i = 0; i < 6; i++) {
+                        int row = i / 3;
+                        int col = i % 3;
+                        float x = 130 + col * 200;
+                        float y = 180 + row * 180;
+                        sf::FloatRect skinArea(x, y, 150, 120);
+                        if (skinArea.contains(static_cast<float>(mousePos.x), static_cast<float>(mousePos.y))) {
+                            selectedSkin = i;
+                            paddle.SetSkin(selectedSkin);
+                            std::cout << "Skin seleccionada: " << i << std::endl;
+                        }
+                    }
                     if (IsMouseOver(backButton, mousePos)) {
                         gameState = MENU;
                     }
@@ -331,6 +457,10 @@ int main() {
                         boss = Boss(WINDOW_WIDTH / 2.0f, 80.0f);
                         ball.Reset(WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f);
                         ball.ResetSpeed();
+                        // Volver a musica del menu
+                        if (gameMusicLoaded) gameMusic.stop();
+                        if (menuMusicLoaded) menuMusic.play();
+                        currentMusicState = MENU;
                         
                         // Recrear bloques
                         blocks.clear();
@@ -442,13 +572,23 @@ int main() {
                 }
                 
                 // Control de musica con tecla M
-                if (event.key.code == sf::Keyboard::M && musicLoaded) {
-                    if (backgroundMusic.getStatus() == sf::Music::Playing) {
-                        backgroundMusic.pause();
-                        std::cout << "Musica pausada" << std::endl;
-                    } else {
-                        backgroundMusic.play();
-                        std::cout << "Musica reanudada" << std::endl;
+                if (event.key.code == sf::Keyboard::M) {
+                    if (currentMusicState == MENU && menuMusicLoaded) {
+                        if (menuMusic.getStatus() == sf::Music::Playing) {
+                            menuMusic.pause();
+                            std::cout << "Musica pausada" << std::endl;
+                        } else {
+                            menuMusic.play();
+                            std::cout << "Musica reanudada" << std::endl;
+                        }
+                    } else if ((currentMusicState == PLAYING || currentMusicState == BOSS_FIGHT) && gameMusicLoaded) {
+                        if (gameMusic.getStatus() == sf::Music::Playing) {
+                            gameMusic.pause();
+                            std::cout << "Musica pausada" << std::endl;
+                        } else {
+                            gameMusic.play();
+                            std::cout << "Musica reanudada" << std::endl;
+                        }
                     }
                 }
                 
@@ -457,6 +597,10 @@ int main() {
                     gameState = MENU;
                     gameStarted = false;
                     gameOver = false;
+                    // Volver a musica del menu
+                    if (gameMusicLoaded) gameMusic.stop();
+                    if (menuMusicLoaded) menuMusic.play();
+                    currentMusicState = MENU;
                 }
                 
                 if (event.key.code == sf::Keyboard::R && gameOver) {
@@ -519,6 +663,7 @@ int main() {
                 if (powerup.GetBounds().intersects(paddle.GetBounds())) {
                     PowerUpType type = powerup.GetType();
                     powerup.Deactivate();
+                    powerUpSound.play();
                     
                     switch(type) {
                         case PowerUpType::EXTRA_LIFE:
@@ -579,16 +724,19 @@ int main() {
             if (ballPos.x - BALL_RADIUS < 0) {
                 ball.ReverseX();
                 ball.SetPosition(BALL_RADIUS, ballPos.y); // Reposicionar fuera de la pared
+                wallHitSound.play();
             }
             // Pared derecha
             if (ballPos.x + BALL_RADIUS > WINDOW_WIDTH) {
                 ball.ReverseX();
                 ball.SetPosition(WINDOW_WIDTH - BALL_RADIUS, ballPos.y); // Reposicionar fuera de la pared
+                wallHitSound.play();
             }
             // Pared superior
             if (ballPos.y - BALL_RADIUS < 0) {
                 ball.ReverseY();
                 ball.SetPosition(ballPos.x, BALL_RADIUS); // Reposicionar fuera de la pared
+                wallHitSound.play();
             }
             
             // Pelota cayo
@@ -596,11 +744,13 @@ int main() {
                 // Solo perder vida si no hay pelotas extra
                 if (extraBalls.empty()) {
                     lives--;
+                    loseLifeSound.play();
                     std::cout << "Vida perdida! Vidas restantes: " << lives << std::endl;
                     
                     if (lives <= 0) {
                         gameOver = true;
                         victory = false;
+                        gameOverSound.play();
                         std::cout << "Game Over! Puntuacion final: " << score << std::endl;
                     } else {
                         ball.Reset(WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f);
@@ -618,6 +768,7 @@ int main() {
             bool hitTop;
             if (CheckCollision(ball, paddle.GetBounds(), hitTop)) {
                 ball.ReverseY();
+                paddleHitSound.play();
                 
                 // Modificar angulo basado en donde golpeo el paddle
                 sf::Vector2f paddlePos = paddle.GetPosition();
@@ -638,6 +789,7 @@ int main() {
                         sf::Vector2f blockPos = sf::Vector2f(block.GetBounds().left + block.GetBounds().width / 2,
                                                               block.GetBounds().top + block.GetBounds().height / 2);
                         block.Destroy();
+                        blockHitSound.play();
                         score += block.GetPoints();
                         std::cout << "Bloque destruido! Puntos: " << score << std::endl;
                         
@@ -839,6 +991,7 @@ int main() {
             bool hitTop;
             if (boss.IsAlive() && CheckCollision(ball, boss.GetBounds(), hitTop)) {
                 boss.TakeDamage(BOSS_DAMAGE_PER_HIT);
+                bossHitSound.play();
                 ball.ReverseY();
                 
                 // Reposicionar pelota ligeramente fuera del boss para colision mas natural
@@ -855,6 +1008,7 @@ int main() {
                 // Continuar juego cuando boss es derrotado
                 if (!boss.IsAlive() && !bossDefeated) {
                     bossDefeated = true;
+                    bossDefeatedSound.play();
                     score += 50; // Bonus por derrotar al boss
                     lastBossScore = score; // Marcar para proximo boss en +1000 puntos
                     gameState = PLAYING;
@@ -905,9 +1059,40 @@ int main() {
         }
         
         // Renderizado
-        window.clear(sf::Color(20, 20, 40));
+        window.clear(sf::Color(10, 0, 40));  // Morado oscuro retro
         
         if (gameState == MENU) {
+            // Fondo retro con patrón de gradiente pixelado
+            for (int y = 0; y < 600; y += 20) {
+                for (int x = 0; x < 800; x += 20) {
+                    sf::RectangleShape pixel(sf::Vector2f(20, 20));
+                    pixel.setPosition(x, y);
+                    // Gradiente de colores estilo 16-bit
+                    int colorIndex = (x / 80 + y / 60) % 4;
+                    if (colorIndex == 0) pixel.setFillColor(sf::Color(20, 10, 60));
+                    else if (colorIndex == 1) pixel.setFillColor(sf::Color(30, 10, 70));
+                    else if (colorIndex == 2) pixel.setFillColor(sf::Color(25, 5, 65));
+                    else pixel.setFillColor(sf::Color(15, 15, 55));
+                    window.draw(pixel);
+                }
+            }
+            
+            // Borde decorativo superior estilo 16-bit
+            for (int i = 0; i < 800; i += 40) {
+                sf::RectangleShape topBar(sf::Vector2f(35, 15));
+                topBar.setPosition(i, 0);
+                topBar.setFillColor(i % 80 == 0 ? sf::Color(255, 0, 255) : sf::Color(0, 255, 255));
+                window.draw(topBar);
+            }
+            
+            // Borde decorativo inferior
+            for (int i = 0; i < 800; i += 40) {
+                sf::RectangleShape bottomBar(sf::Vector2f(35, 15));
+                bottomBar.setPosition(i, 585);
+                bottomBar.setFillColor(i % 80 == 0 ? sf::Color(0, 255, 255) : sf::Color(255, 0, 255));
+                window.draw(bottomBar);
+            }
+            
             // Dibujar menu principal
             if (fontLoaded) {
                 window.draw(titleText);
@@ -916,27 +1101,72 @@ int main() {
                 sf::Vector2i mousePos = sf::Mouse::getPosition(window);
                 
                 if (IsMouseOver(playButton, mousePos)) {
-                    playButton.setFillColor(sf::Color(100, 100, 150));
+                    playButton.setFillColor(sf::Color(255, 0, 255));  // Magenta brillante hover
+                    playButton.setOutlineThickness(5);
+                    playButton.setOutlineColor(sf::Color(255, 255, 0));  // Borde amarillo
                 } else {
-                    playButton.setFillColor(sf::Color(70, 70, 100));
+                    playButton.setFillColor(sf::Color(25, 25, 80));  // Azul oscuro retro
+                    playButton.setOutlineThickness(4);
+                    playButton.setOutlineColor(sf::Color(0, 255, 255));  // Borde cyan
                 }
                 
                 if (IsMouseOver(controlsButton, mousePos)) {
-                    controlsButton.setFillColor(sf::Color(100, 100, 150));
+                    controlsButton.setFillColor(sf::Color(255, 0, 255));  // Magenta brillante hover
+                    controlsButton.setOutlineThickness(5);
+                    controlsButton.setOutlineColor(sf::Color(255, 255, 0));
                 } else {
-                    controlsButton.setFillColor(sf::Color(70, 70, 100));
+                    controlsButton.setFillColor(sf::Color(25, 25, 80));
+                    controlsButton.setOutlineThickness(4);
+                    controlsButton.setOutlineColor(sf::Color(0, 255, 255));
+                }
+                
+                if (IsMouseOver(skinsButton, mousePos)) {
+                    skinsButton.setFillColor(sf::Color(255, 0, 255));  // Magenta brillante hover
+                    skinsButton.setOutlineThickness(5);
+                    skinsButton.setOutlineColor(sf::Color(255, 255, 0));
+                } else {
+                    skinsButton.setFillColor(sf::Color(25, 25, 80));
+                    skinsButton.setOutlineThickness(4);
+                    skinsButton.setOutlineColor(sf::Color(0, 255, 255));
                 }
                 
                 if (IsMouseOver(exitButton, mousePos)) {
-                    exitButton.setFillColor(sf::Color(100, 100, 150));
+                    exitButton.setFillColor(sf::Color(255, 0, 255));  // Magenta brillante hover
+                    exitButton.setOutlineThickness(5);
+                    exitButton.setOutlineColor(sf::Color(255, 255, 0));
                 } else {
-                    exitButton.setFillColor(sf::Color(70, 70, 100));
+                    exitButton.setFillColor(sf::Color(25, 25, 80));
+                    exitButton.setOutlineThickness(4);
+                    exitButton.setOutlineColor(sf::Color(0, 255, 255));
                 }
+                
+                // Sombras de botones (efecto 16-bit)
+                sf::RectangleShape playShadow(playButton.getSize());
+                playShadow.setPosition(playButton.getPosition().x + 6, playButton.getPosition().y + 6);
+                playShadow.setFillColor(sf::Color(0, 0, 0, 100));
+                window.draw(playShadow);
+                
+                sf::RectangleShape controlsShadow(controlsButton.getSize());
+                controlsShadow.setPosition(controlsButton.getPosition().x + 6, controlsButton.getPosition().y + 6);
+                controlsShadow.setFillColor(sf::Color(0, 0, 0, 100));
+                window.draw(controlsShadow);
+                
+                sf::RectangleShape skinsShadow(skinsButton.getSize());
+                skinsShadow.setPosition(skinsButton.getPosition().x + 6, skinsButton.getPosition().y + 6);
+                skinsShadow.setFillColor(sf::Color(0, 0, 0, 100));
+                window.draw(skinsShadow);
+                
+                sf::RectangleShape exitShadow(exitButton.getSize());
+                exitShadow.setPosition(exitButton.getPosition().x + 6, exitButton.getPosition().y + 6);
+                exitShadow.setFillColor(sf::Color(0, 0, 0, 100));
+                window.draw(exitShadow);
                 
                 window.draw(playButton);
                 window.draw(playText);
                 window.draw(controlsButton);
                 window.draw(controlsText);
+                window.draw(skinsButton);
+                window.draw(skinsText);
                 window.draw(exitButton);
                 window.draw(exitText);
             }
@@ -947,8 +1177,10 @@ int main() {
                 sf::Text controlsTitle;
                 controlsTitle.setFont(font);
                 controlsTitle.setString("CONTROLES");
-                controlsTitle.setCharacterSize(48);
-                controlsTitle.setFillColor(sf::Color::Cyan);
+                controlsTitle.setCharacterSize(64);  // Titulo mas grande
+                controlsTitle.setFillColor(sf::Color(255, 0, 255));  // Magenta retro
+                controlsTitle.setOutlineThickness(3);
+                controlsTitle.setOutlineColor(sf::Color(0, 255, 255));  // Cyan
                 sf::FloatRect ctBounds = controlsTitle.getLocalBounds();
                 controlsTitle.setOrigin(ctBounds.left + ctBounds.width / 2.0f, 
                                        ctBounds.top + ctBounds.height / 2.0f);
@@ -957,8 +1189,8 @@ int main() {
                 
                 sf::Text controlsList;
                 controlsList.setFont(font);
-                controlsList.setCharacterSize(24);
-                controlsList.setFillColor(sf::Color::White);
+                controlsList.setCharacterSize(16);
+                controlsList.setFillColor(sf::Color(255, 255, 0));  // Amarillo brillante
                 controlsList.setString(
                     "FLECHA IZQUIERDA: Mover paleta a la izquierda\n\n"
                     "FLECHA DERECHA: Mover paleta a la derecha\n\n"
@@ -967,15 +1199,91 @@ int main() {
                     "R: Reiniciar juego (en Game Over)\n\n"
                     "ESC: Volver al menu"
                 );
-                controlsList.setPosition(150, 180);
+                sf::FloatRect clBounds = controlsList.getLocalBounds();
+                controlsList.setOrigin(clBounds.left + clBounds.width / 2.0f, 
+                                       clBounds.top + clBounds.height / 2.0f);
+                controlsList.setPosition(WINDOW_WIDTH / 2.0f, 300);
                 window.draw(controlsList);
                 
                 // Boton de regresar con hover
                 sf::Vector2i mousePos = sf::Mouse::getPosition(window);
                 if (IsMouseOver(backButton, mousePos)) {
-                    backButton.setFillColor(sf::Color(100, 100, 150));
+                    backButton.setFillColor(sf::Color(255, 0, 255));  // Magenta hover
                 } else {
-                    backButton.setFillColor(sf::Color(70, 70, 100));
+                    backButton.setFillColor(sf::Color(25, 25, 80));  // Azul oscuro retro
+                }
+                
+                window.draw(backButton);
+                window.draw(backText);
+            }
+        }
+        else if (gameState == SKIN_SELECTION) {
+            // Dibujar pantalla de selección de skins
+            if (fontLoaded) {
+                sf::Text skinsTitle;
+                skinsTitle.setFont(font);
+                skinsTitle.setString("SELECCIONA TU SKIN");
+                skinsTitle.setCharacterSize(40);
+                skinsTitle.setFillColor(sf::Color(255, 0, 255));  // Magenta retro
+                skinsTitle.setOutlineThickness(3);
+                skinsTitle.setOutlineColor(sf::Color(0, 255, 255));  // Cyan
+                sf::FloatRect stBounds = skinsTitle.getLocalBounds();
+                skinsTitle.setOrigin(stBounds.left + stBounds.width / 2.0f, 
+                                     stBounds.top + stBounds.height / 2.0f);
+                skinsTitle.setPosition(WINDOW_WIDTH / 2.0f, 80);
+                window.draw(skinsTitle);
+                
+                // Dibujar las 6 cajas de preview de skins (3 columnas, 2 filas)
+                for (int i = 0; i < 6; i++) {
+                    int row = i / 3;
+                    int col = i % 3;
+                    float x = 130 + col * 200;
+                    float y = 180 + row * 180;
+                    
+                    // Caja de preview
+                    sf::RectangleShape previewBox(sf::Vector2f(150, 120));
+                    previewBox.setPosition(x, y);
+                    
+                    // Highlight para la skin seleccionada
+                    if (i == selectedSkin) {
+                        previewBox.setFillColor(sf::Color(50, 50, 150));  // Azul oscuro
+                        previewBox.setOutlineThickness(4);
+                        previewBox.setOutlineColor(sf::Color(0, 255, 255));  // Cyan brillante
+                    } else {
+                        previewBox.setFillColor(sf::Color(25, 25, 80));
+                        previewBox.setOutlineThickness(2);
+                        previewBox.setOutlineColor(sf::Color(100, 100, 150));
+                    }
+                    
+                    window.draw(previewBox);
+                    
+                    // Dibujar sprite de la skin centrado
+                    if (i < skinSprites.size() && skinSprites[i].getTexture() != nullptr) {
+                        sf::FloatRect spriteBounds = skinSprites[i].getLocalBounds();
+                        skinSprites[i].setOrigin(spriteBounds.width / 2.0f, spriteBounds.height / 2.0f);
+                        skinSprites[i].setPosition(x + 75, y + 45);
+                        window.draw(skinSprites[i]);
+                    }
+                    
+                    // Nombre de la skin
+                    sf::Text skinName;
+                    skinName.setFont(font);
+                    skinName.setString(skinNames[i]);
+                    skinName.setCharacterSize(18);
+                    skinName.setFillColor(sf::Color(255, 255, 0));  // Amarillo
+                    sf::FloatRect nameBounds = skinName.getLocalBounds();
+                    skinName.setOrigin(nameBounds.left + nameBounds.width / 2.0f, 
+                                       nameBounds.top + nameBounds.height / 2.0f);
+                    skinName.setPosition(x + 75, y + 95);
+                    window.draw(skinName);
+                }
+                
+                // Botón de regresar con hover
+                sf::Vector2i mousePos = sf::Mouse::getPosition(window);
+                if (IsMouseOver(backButton, mousePos)) {
+                    backButton.setFillColor(sf::Color(255, 0, 255));  // Magenta hover
+                } else {
+                    backButton.setFillColor(sf::Color(25, 25, 80));  // Azul oscuro retro
                 }
                 
                 window.draw(backButton);

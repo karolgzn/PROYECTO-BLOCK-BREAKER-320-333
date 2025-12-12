@@ -1,0 +1,13 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Arkanoid",
+			"type": "shell",
+			"command": "${workspaceFolder}\\bin\\arkanoid.exe",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		}
+	]
+}

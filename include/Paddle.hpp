@@ -6,6 +6,9 @@
 class Paddle {
 private:
     sf::RectangleShape shape;
+    sf::Texture texture;
+    sf::Sprite sprite;
+    bool useTexture;
     float speed;
     float width;
     float height;
@@ -20,9 +23,9 @@ private:
     bool sizeModified;
     bool speedModified;
     float sizeTimer;
-    float speedTimer;
     float normalWidth;
     float modifiedSpeed;
+    float speedTimer;
 
 public:
     Paddle(float x, float y, float width, float height);
@@ -36,6 +39,7 @@ public:
     void ApplySizeChange(float multiplier, float duration);
     void ApplySpeedChange(float multiplier, float duration);
     void UpdatePowerUps(float deltaTime);
+    void SetSkin(int skinId);
     
     sf::Vector2f GetPosition() const;
     sf::FloatRect GetBounds() const;
