@@ -6,6 +6,8 @@
 class Block {
 private:
     sf::RectangleShape shape;
+    sf::RectangleShape highlight;
+    sf::RectangleShape shadow;
     bool destroyed;
     int points;
 

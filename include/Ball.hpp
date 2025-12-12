@@ -22,6 +22,8 @@ public:
     void ReverseY();
     void IncreaseSpeed(float percentage);
     void ResetSpeed();
+    void SetSpeed(float newSpeed);
+    void SetPosition(float x, float y);
     
     sf::Vector2f GetPosition() const;
     sf::Vector2f GetVelocity() const;
