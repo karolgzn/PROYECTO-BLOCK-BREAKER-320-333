@@ -1,10 +1,19 @@
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <iostream>
 #include <vector>
 #include <cmath>
 #include "Ball.hpp"
 #include "Paddle.hpp"
 #include "Block.hpp"
+
+// Estados del juego
+enum GameState {
+    MENU,
+    PLAYING,
+    CONTROLS,
+    GAME_OVER
+};
 
 // Constantes
 const int WINDOW_WIDTH = 800;
@@ -16,6 +25,32 @@ const float BLOCK_WIDTH = 75.0f;
 const float BLOCK_HEIGHT = 25.0f;
 const int BLOCKS_PER_ROW = 10;
 const int BLOCK_ROWS = 5;
+
+// Función para crear un botón visual
+void CreateButton(sf::RectangleShape& button, sf::Text& text, const std::string& label, 
+                  float x, float y, float width, float height, const sf::Font& font) {
+    button.setSize(sf::Vector2f(width, height));
+    button.setPosition(x, y);
+    button.setFillColor(sf::Color(70, 70, 100));
+    button.setOutlineThickness(3);
+    button.setOutlineColor(sf::Color::White);
+    
+    text.setFont(font);
+    text.setString(label);
+    text.setCharacterSize(24);
+    text.setFillColor(sf::Color::White);
+    
+    sf::FloatRect textBounds = text.getLocalBounds();
+    text.setOrigin(textBounds.left + textBounds.width / 2.0f, 
+                   textBounds.top + textBounds.height / 2.0f);
+    text.setPosition(x + width / 2.0f, y + height / 2.0f);
+}
+
+// Función para verificar si el mouse está sobre un botón
+bool IsMouseOver(const sf::RectangleShape& button, const sf::Vector2i& mousePos) {
+    return button.getGlobalBounds().contains(static_cast<float>(mousePos.x), 
+                                            static_cast<float>(mousePos.y));
+}
 
 // Función para verificar colisión círculo-rectángulo
 bool CheckCollision(const Ball& ball, const sf::FloatRect& rect, bool& hitTop) {
@@ -51,14 +86,17 @@ int main() {
     }
     
     window.setFramerateLimit(60);
-    std::cout << "Juego iniciado - Presiona ESPACIO para lanzar la pelota" << std::endl;
+    std::cout << "Juego iniciado - Usa el menu principal" << std::endl;
     
     // Variables del juego
+    GameState gameState = MENU;
     int score = 0;
     int lives = 3;
     bool gameStarted = false;
     bool gameOver = false;
     bool victory = false;
+    int lastSpeedIncreaseScore = 0;
+    const float MAX_BALL_SPEED = 600.0f; // 100% más rápido (2x velocidad inicial)
     
     // Crear objetos del juego
     Ball ball(WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f, BALL_RADIUS);
@@ -85,9 +123,23 @@ int main() {
         }
     }
     
-    // Configurar texto (opcional, funciona sin fuente)
+    // Configurar texto con múltiples opciones de fuente
     sf::Font font;
-    bool fontLoaded = font.loadFromFile("assets/fonts/arial.ttf");
+    bool fontLoaded = false;
+    
+    // Intentar cargar fuente del proyecto primero
+    if (font.loadFromFile("assets/fonts/arial.ttf")) {
+        fontLoaded = true;
+        std::cout << "Fuente cargada desde assets/fonts/arial.ttf" << std::endl;
+    }
+    // Si no existe, intentar fuente del sistema Windows
+    else if (font.loadFromFile("C:/Windows/Fonts/arial.ttf")) {
+        fontLoaded = true;
+        std::cout << "Fuente cargada desde Windows/Fonts" << std::endl;
+    }
+    else {
+        std::cout << "Advertencia: No se pudo cargar fuente. El texto no se mostrará." << std::endl;
+    }
     
     sf::Text scoreText;
     sf::Text livesText;
@@ -109,6 +161,73 @@ int main() {
         messageText.setFillColor(sf::Color::White);
     }
     
+    // Elementos del menú
+    sf::Text titleText;
+    sf::RectangleShape playButton, controlsButton, exitButton;
+    sf::Text playText, controlsText, exitText;
+    sf::RectangleShape backButton;
+    sf::Text backText;
+    
+    // Botones de Game Over
+    sf::RectangleShape gameOverMenuButton, gameOverRetryButton, gameOverExitButton;
+    sf::Text gameOverMenuText, gameOverRetryText, gameOverExitText;
+    
+    if (fontLoaded) {
+        // Título del juego
+        titleText.setFont(font);
+        titleText.setString("ARKANOID");
+        titleText.setCharacterSize(72);
+        titleText.setFillColor(sf::Color::Cyan);
+        titleText.setStyle(sf::Text::Bold);
+        sf::FloatRect titleBounds = titleText.getLocalBounds();
+        titleText.setOrigin(titleBounds.left + titleBounds.width / 2.0f, 
+                           titleBounds.top + titleBounds.height / 2.0f);
+        titleText.setPosition(WINDOW_WIDTH / 2.0f, 120);
+        
+        // Crear botones del menú
+        CreateButton(playButton, playText, "INICIAR JUEGO", 
+                    WINDOW_WIDTH / 2.0f - 150, 250, 300, 60, font);
+        CreateButton(controlsButton, controlsText, "CONTROLES", 
+                    WINDOW_WIDTH / 2.0f - 150, 330, 300, 60, font);
+        CreateButton(exitButton, exitText, "SALIR", 
+                    WINDOW_WIDTH / 2.0f - 150, 410, 300, 60, font);
+        
+        // Botón de regresar (para pantalla de controles)
+        CreateButton(backButton, backText, "REGRESAR", 
+                    WINDOW_WIDTH / 2.0f - 100, 500, 200, 50, font);
+        
+        // Botones de Game Over
+        CreateButton(gameOverMenuButton, gameOverMenuText, "MENU", 
+                    WINDOW_WIDTH / 2.0f - 350, 350, 200, 60, font);
+        CreateButton(gameOverRetryButton, gameOverRetryText, "REINTENTAR", 
+                    WINDOW_WIDTH / 2.0f - 100, 350, 200, 60, font);
+        CreateButton(gameOverExitButton, gameOverExitText, "SALIR", 
+                    WINDOW_WIDTH / 2.0f + 150, 350, 200, 60, font);
+    }
+    
+    // Configurar música de fondo
+    sf::Music backgroundMusic;
+    bool musicLoaded = false;
+    
+    if (backgroundMusic.openFromFile("assets/music/background_music.ogg")) {
+        musicLoaded = true;
+        backgroundMusic.setLoop(true);
+        backgroundMusic.setVolume(50.0f); // 50% volumen
+        backgroundMusic.play();
+        std::cout << "Música de fondo cargada y reproduciendo" << std::endl;
+    }
+    else if (backgroundMusic.openFromFile("assets/music/background_music.wav")) {
+        musicLoaded = true;
+        backgroundMusic.setLoop(true);
+        backgroundMusic.setVolume(50.0f);
+        backgroundMusic.play();
+        std::cout << "Música de fondo cargada y reproduciendo" << std::endl;
+    }
+    else {
+        std::cout << "Advertencia: No se encontró música de fondo. El juego seguirá sin música." << std::endl;
+        std::cout << "Coloca un archivo 'background_music.ogg' en assets/music/" << std::endl;
+    }
+    
     // Reloj para delta time
     sf::Clock clock;
     
@@ -123,21 +242,116 @@ int main() {
                 window.close();
             }
             
+            // Manejo de clics del mouse
+            if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+                sf::Vector2i mousePos = sf::Mouse::getPosition(window);
+                
+                if (gameState == MENU) {
+                    if (IsMouseOver(playButton, mousePos)) {
+                        gameState = PLAYING;
+                        std::cout << "Juego iniciado desde el menú" << std::endl;
+                    }
+                    else if (IsMouseOver(controlsButton, mousePos)) {
+                        gameState = CONTROLS;
+                        std::cout << "Mostrando controles" << std::endl;
+                    }
+                    else if (IsMouseOver(exitButton, mousePos)) {
+                        window.close();
+                    }
+                }
+                else if (gameState == CONTROLS) {
+                    if (IsMouseOver(backButton, mousePos)) {
+                        gameState = MENU;
+                    }
+                }
+                else if (gameState == PLAYING && gameOver) {
+                    // Manejo de clics en pantalla de Game Over
+                    if (IsMouseOver(gameOverMenuButton, mousePos)) {
+                        // Volver al menú
+                        gameState = MENU;
+                        gameStarted = false;
+                        gameOver = false;
+                        victory = false;
+                        score = 0;
+                        lives = 3;
+                        lastSpeedIncreaseScore = 0;
+                        ball.Reset(WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f);
+                        ball.ResetSpeed();
+                        
+                        // Recrear bloques
+                        blocks.clear();
+                        for (int row = 0; row < BLOCK_ROWS; ++row) {
+                            for (int col = 0; col < BLOCKS_PER_ROW; ++col) {
+                                float x = startX + col * BLOCK_WIDTH;
+                                float y = startY + row * (BLOCK_HEIGHT + 5.0f);
+                                blocks.emplace_back(x, y, BLOCK_WIDTH - 5.0f, BLOCK_HEIGHT, colors[row], 10);
+                            }
+                        }
+                    }
+                    else if (IsMouseOver(gameOverRetryButton, mousePos)) {
+                        // Reintentar
+                        gameStarted = false;
+                        gameOver = false;
+                        victory = false;
+                        score = 0;
+                        lives = 3;
+                        lastSpeedIncreaseScore = 0;
+                        ball.Reset(WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f);
+                        ball.ResetSpeed();
+                        
+                        // Recrear bloques
+                        blocks.clear();
+                        for (int row = 0; row < BLOCK_ROWS; ++row) {
+                            for (int col = 0; col < BLOCKS_PER_ROW; ++col) {
+                                float x = startX + col * BLOCK_WIDTH;
+                                float y = startY + row * (BLOCK_HEIGHT + 5.0f);
+                                blocks.emplace_back(x, y, BLOCK_WIDTH - 5.0f, BLOCK_HEIGHT, colors[row], 10);
+                            }
+                        }
+                    }
+                    else if (IsMouseOver(gameOverExitButton, mousePos)) {
+                        // Salir del juego
+                        window.close();
+                    }
+                }
+            }
+            
             if (event.type == sf::Event::KeyPressed) {
-                if (event.key.code == sf::Keyboard::Space && !gameStarted && !gameOver) {
+                if (event.key.code == sf::Keyboard::Space && gameState == PLAYING && !gameStarted && !gameOver) {
                     gameStarted = true;
                     ball.Launch(-60.0f); // Lanzar hacia arriba-izquierda
                 }
                 
+                // Control de música con tecla M
+                if (event.key.code == sf::Keyboard::M && musicLoaded) {
+                    if (backgroundMusic.getStatus() == sf::Music::Playing) {
+                        backgroundMusic.pause();
+                        std::cout << "Música pausada" << std::endl;
+                    } else {
+                        backgroundMusic.play();
+                        std::cout << "Música reanudada" << std::endl;
+                    }
+                }
+                
+                // Regresar al menú desde Game Over
+                if (event.key.code == sf::Keyboard::Escape && gameState == PLAYING) {
+                    gameState = MENU;
+                    gameStarted = false;
+                    gameOver = false;
+                }
+                
                 if (event.key.code == sf::Keyboard::R && gameOver) {
                     // Reiniciar juego
+                    gameState = PLAYING;
                     score = 0;
                     lives = 3;
+                    lastSpeedIncreaseScore = 0;
                     gameStarted = false;
                     gameOver = false;
                     victory = false;
                     
                     ball.Reset(WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f);
+                    ball.ResetSpeed();
                     
                     // Recrear bloques
                     blocks.clear();
@@ -152,14 +366,12 @@ int main() {
             }
         }
         
-        if (!gameOver && gameStarted) {
+        if (gameState == PLAYING && !gameOver && gameStarted) {
             // Control del paddle
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left) || 
-                sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
                 paddle.MoveLeft(deltaTime);
             }
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right) || 
-                sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
                 paddle.MoveRight(deltaTime);
             }
             
@@ -223,6 +435,16 @@ int main() {
                         score += block.GetPoints();
                         std::cout << "Bloque destruido! Puntos: " << score << std::endl;
                         
+                        // Aumentar velocidad cada 70 puntos
+                        if (score - lastSpeedIncreaseScore >= 70) {
+                            if (ball.GetSpeed() < MAX_BALL_SPEED) {
+                                ball.IncreaseSpeed(5.0f); // 5% más rápido
+                                lastSpeedIncreaseScore = score;
+                                std::cout << "¡Velocidad de bola aumentada! Velocidad actual: " 
+                                         << ball.GetSpeed() << std::endl;
+                            }
+                        }
+                        
                         if (hitTop) {
                             ball.ReverseY();
                         } else {
@@ -249,55 +471,183 @@ int main() {
         }
         
         // Si no ha empezado, la pelota sigue al paddle
-        if (!gameStarted && !gameOver) {
+        if (gameState == PLAYING && !gameStarted && !gameOver) {
             sf::Vector2f paddlePos = paddle.GetPosition();
             ball.Reset(paddlePos.x, paddlePos.y - 30.0f);
         }
         
         // Actualizar textos
         if (fontLoaded) {
-            scoreText.setString("Puntos: " + std::to_string(score));
+            scoreText.setString("Puntuacion: " + std::to_string(score));
             livesText.setString("Vidas: " + std::to_string(lives));
         }
         
         // Renderizado
         window.clear(sf::Color(20, 20, 40));
         
-        // Dibujar objetos
-        paddle.Draw(window);
-        ball.Draw(window);
-        
-        for (auto& block : blocks) {
-            block.Draw(window);
+        if (gameState == MENU) {
+            // Dibujar menú principal
+            if (fontLoaded) {
+                window.draw(titleText);
+                
+                // Efecto hover en botones
+                sf::Vector2i mousePos = sf::Mouse::getPosition(window);
+                
+                if (IsMouseOver(playButton, mousePos)) {
+                    playButton.setFillColor(sf::Color(100, 100, 150));
+                } else {
+                    playButton.setFillColor(sf::Color(70, 70, 100));
+                }
+                
+                if (IsMouseOver(controlsButton, mousePos)) {
+                    controlsButton.setFillColor(sf::Color(100, 100, 150));
+                } else {
+                    controlsButton.setFillColor(sf::Color(70, 70, 100));
+                }
+                
+                if (IsMouseOver(exitButton, mousePos)) {
+                    exitButton.setFillColor(sf::Color(100, 100, 150));
+                } else {
+                    exitButton.setFillColor(sf::Color(70, 70, 100));
+                }
+                
+                window.draw(playButton);
+                window.draw(playText);
+                window.draw(controlsButton);
+                window.draw(controlsText);
+                window.draw(exitButton);
+                window.draw(exitText);
+            }
         }
-        
-        // Dibujar UI
-        if (fontLoaded) {
-            window.draw(scoreText);
-            window.draw(livesText);
+        else if (gameState == CONTROLS) {
+            // Dibujar pantalla de controles
+            if (fontLoaded) {
+                sf::Text controlsTitle;
+                controlsTitle.setFont(font);
+                controlsTitle.setString("CONTROLES");
+                controlsTitle.setCharacterSize(48);
+                controlsTitle.setFillColor(sf::Color::Cyan);
+                sf::FloatRect ctBounds = controlsTitle.getLocalBounds();
+                controlsTitle.setOrigin(ctBounds.left + ctBounds.width / 2.0f, 
+                                       ctBounds.top + ctBounds.height / 2.0f);
+                controlsTitle.setPosition(WINDOW_WIDTH / 2.0f, 80);
+                window.draw(controlsTitle);
+                
+                sf::Text controlsList;
+                controlsList.setFont(font);
+                controlsList.setCharacterSize(24);
+                controlsList.setFillColor(sf::Color::White);
+                controlsList.setString(
+                    "FLECHA IZQUIERDA: Mover paleta a la izquierda\n\n"
+                    "FLECHA DERECHA: Mover paleta a la derecha\n\n"
+                    "ESPACIO: Lanzar pelota\n\n"
+                    "M: Pausar/Reanudar musica\n\n"
+                    "R: Reiniciar juego (en Game Over)\n\n"
+                    "ESC: Volver al menu"
+                );
+                controlsList.setPosition(150, 180);
+                window.draw(controlsList);
+                
+                // Botón de regresar con hover
+                sf::Vector2i mousePos = sf::Mouse::getPosition(window);
+                if (IsMouseOver(backButton, mousePos)) {
+                    backButton.setFillColor(sf::Color(100, 100, 150));
+                } else {
+                    backButton.setFillColor(sf::Color(70, 70, 100));
+                }
+                
+                window.draw(backButton);
+                window.draw(backText);
+            }
+        }
+        else if (gameState == PLAYING) {
+            // Dibujar objetos del juego
+            paddle.Draw(window);
+            ball.Draw(window);
             
-            if (!gameStarted && !gameOver) {
-                messageText.setString("Presiona ESPACIO para iniciar");
-                messageText.setPosition(WINDOW_WIDTH / 2.0f - 180, WINDOW_HEIGHT / 2.0f);
-                window.draw(messageText);
+            for (auto& block : blocks) {
+                block.Draw(window);
             }
             
-            if (gameOver) {
-                if (victory) {
-                    messageText.setString("VICTORIA!");
-                    messageText.setFillColor(sf::Color::Green);
-                } else {
-                    messageText.setString("GAME OVER");
-                    messageText.setFillColor(sf::Color::Red);
-                }
-                messageText.setPosition(WINDOW_WIDTH / 2.0f - 80, WINDOW_HEIGHT / 2.0f - 50);
-                window.draw(messageText);
+            // Dibujar UI del juego
+            if (fontLoaded) {
+                window.draw(scoreText);
+                window.draw(livesText);
                 
-                messageText.setString("Presiona R para reiniciar");
-                messageText.setFillColor(sf::Color::White);
-                messageText.setCharacterSize(20);
-                messageText.setPosition(WINDOW_WIDTH / 2.0f - 140, WINDOW_HEIGHT / 2.0f + 20);
-                window.draw(messageText);
+                if (!gameStarted && !gameOver) {
+                    messageText.setString("Presiona ESPACIO para iniciar");
+                    messageText.setCharacterSize(24);
+                    messageText.setFillColor(sf::Color::White);
+                    sf::FloatRect msgBounds = messageText.getLocalBounds();
+                    messageText.setOrigin(msgBounds.left + msgBounds.width / 2.0f, 
+                                         msgBounds.top + msgBounds.height / 2.0f);
+                    messageText.setPosition(WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f);
+                    window.draw(messageText);
+                }
+                
+                if (gameOver) {
+                    // Overlay oscuro semi-transparente
+                    sf::RectangleShape overlay;
+                    overlay.setSize(sf::Vector2f(WINDOW_WIDTH, WINDOW_HEIGHT));
+                    overlay.setPosition(0, 0);
+                    overlay.setFillColor(sf::Color(0, 0, 0, 200)); // Negro con 200/255 de opacidad
+                    window.draw(overlay);
+                    
+                    // Título de Game Over o Victoria
+                    if (victory) {
+                        messageText.setString("¡VICTORIA!");
+                        messageText.setFillColor(sf::Color::Green);
+                    } else {
+                        messageText.setString("GAME OVER");
+                        messageText.setFillColor(sf::Color::Red);
+                    }
+                    messageText.setCharacterSize(64);
+                    messageText.setStyle(sf::Text::Bold);
+                    sf::FloatRect msgBounds = messageText.getLocalBounds();
+                    messageText.setOrigin(msgBounds.left + msgBounds.width / 2.0f, 
+                                         msgBounds.top + msgBounds.height / 2.0f);
+                    messageText.setPosition(WINDOW_WIDTH / 2.0f, 150);
+                    window.draw(messageText);
+                    
+                    // Mostrar puntuación final
+                    messageText.setString("Puntuacion Final: " + std::to_string(score));
+                    messageText.setFillColor(sf::Color::White);
+                    messageText.setCharacterSize(32);
+                    messageText.setStyle(sf::Text::Regular);
+                    msgBounds = messageText.getLocalBounds();
+                    messageText.setOrigin(msgBounds.left + msgBounds.width / 2.0f, 
+                                         msgBounds.top + msgBounds.height / 2.0f);
+                    messageText.setPosition(WINDOW_WIDTH / 2.0f, 240);
+                    window.draw(messageText);
+                    
+                    // Botones con efecto hover
+                    sf::Vector2i mousePos = sf::Mouse::getPosition(window);
+                    
+                    if (IsMouseOver(gameOverMenuButton, mousePos)) {
+                        gameOverMenuButton.setFillColor(sf::Color(100, 100, 150));
+                    } else {
+                        gameOverMenuButton.setFillColor(sf::Color(70, 70, 100));
+                    }
+                    
+                    if (IsMouseOver(gameOverRetryButton, mousePos)) {
+                        gameOverRetryButton.setFillColor(sf::Color(100, 100, 150));
+                    } else {
+                        gameOverRetryButton.setFillColor(sf::Color(70, 70, 100));
+                    }
+                    
+                    if (IsMouseOver(gameOverExitButton, mousePos)) {
+                        gameOverExitButton.setFillColor(sf::Color(100, 100, 150));
+                    } else {
+                        gameOverExitButton.setFillColor(sf::Color(70, 70, 100));
+                    }
+                    
+                    window.draw(gameOverMenuButton);
+                    window.draw(gameOverMenuText);
+                    window.draw(gameOverRetryButton);
+                    window.draw(gameOverRetryText);
+                    window.draw(gameOverExitButton);
+                    window.draw(gameOverExitText);
+                }
             }
         }
         

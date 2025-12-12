@@ -20,11 +20,14 @@ public:
     void SetVelocity(sf::Vector2f vel);
     void ReverseX();
     void ReverseY();
+    void IncreaseSpeed(float percentage);
+    void ResetSpeed();
     
     sf::Vector2f GetPosition() const;
     sf::Vector2f GetVelocity() const;
     float GetRadius() const;
     sf::FloatRect GetBounds() const;
+    float GetSpeed() const;
 };
 
 #endif

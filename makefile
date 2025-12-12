@@ -4,7 +4,18 @@ INC_DIR := include
 
 CXX := g++
 CXXFLAGS := -std=c++17 -Wall -Wextra -Iinclude -pipe
-LIBS := -lsfml-graphics -lsfml-window -lsfml-system -lsfml-audio
+
+# Prefer pkg-config for SFML if available (works well under MSYS2/MinGW)
+ifeq ($(shell pkg-config --exists sfml-all >/dev/null 2>&1 && echo yes),yes)
+	CXXFLAGS += $(shell pkg-config --cflags sfml-all)
+	LIBS := $(shell pkg-config --libs sfml-all)
+else
+	# If you installed SFML manually for MinGW-w64, set SFML_DIR accordingly
+	# Example for MSYS2 mingw64 environment: set SFML_DIR=/mingw64
+	SFML_DIR ?= /mingw64
+	CXXFLAGS += -I$(SFML_DIR)/include
+	LIBS := -L$(SFML_DIR)/lib -lsfml-graphics -lsfml-window -lsfml-system -lsfml-audio
+endif
 
 export TMP := $(CURDIR)/tmp
 export TEMP := $(CURDIR)/tmp
