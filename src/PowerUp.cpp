@@ -73,9 +73,9 @@ PowerUp::PowerUp(float x, float y, PowerUpType type)
     
     const sf::Texture* currentTexture = sprite.getTexture();
     if (currentTexture) {
-        // Escalar a 30x30 pixels
-        float scaleX = 30.0f / currentTexture->getSize().x;
-        float scaleY = 30.0f / currentTexture->getSize().y;
+        // Escalar a 55x55 pixels (mas grande y visible)
+        float scaleX = 55.0f / currentTexture->getSize().x;
+        float scaleY = 55.0f / currentTexture->getSize().y;
         sprite.setScale(scaleX, scaleY);
         sprite.setOrigin(currentTexture->getSize().x / 2.0f, currentTexture->getSize().y / 2.0f);
     }

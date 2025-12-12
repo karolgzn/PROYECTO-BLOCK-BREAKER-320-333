@@ -42,14 +42,14 @@ void CreateButton(sf::RectangleShape& button, sf::Text& text, const std::string&
                   float x, float y, float width, float height, const sf::Font& font) {
     button.setSize(sf::Vector2f(width, height));
     button.setPosition(x, y);
-    button.setFillColor(sf::Color(70, 70, 100));
-    button.setOutlineThickness(3);
-    button.setOutlineColor(sf::Color::White);
+    button.setFillColor(sf::Color(25, 25, 80));  // Azul oscuro retro
+    button.setOutlineThickness(5);  // Borde mas grueso estilo retro
+    button.setOutlineColor(sf::Color(0, 255, 255));  // Cyan brillante
     
     text.setFont(font);
     text.setString(label);
-    text.setCharacterSize(24);
-    text.setFillColor(sf::Color::White);
+    text.setCharacterSize(28);  // Texto mas grande
+    text.setFillColor(sf::Color(255, 255, 0));  // Amarillo brillante
     
     sf::FloatRect textBounds = text.getLocalBounds();
     text.setOrigin(textBounds.left + textBounds.width / 2.0f, 
@@ -223,57 +223,129 @@ int main() {
         // Titulo del juego
         titleText.setFont(font);
         titleText.setString("ARKANOID");
-        titleText.setCharacterSize(72);
-        titleText.setFillColor(sf::Color::Cyan);
+        titleText.setCharacterSize(96);  // Titulo mas grande
+        titleText.setFillColor(sf::Color(255, 0, 255));  // Magenta brillante
         titleText.setStyle(sf::Text::Bold);
+        titleText.setOutlineThickness(5);  // Borde mas grueso
+        titleText.setOutlineColor(sf::Color(255, 255, 0));  // Amarillo brillante
         sf::FloatRect titleBounds = titleText.getLocalBounds();
         titleText.setOrigin(titleBounds.left + titleBounds.width / 2.0f, 
                            titleBounds.top + titleBounds.height / 2.0f);
-        titleText.setPosition(WINDOW_WIDTH / 2.0f, 120);
+        titleText.setPosition(WINDOW_WIDTH / 2.0f, 100);
         
-        // Crear botones del menu
+        // Crear botones del menu - mas grandes y espaciados
         CreateButton(playButton, playText, "INICIAR JUEGO", 
-                    WINDOW_WIDTH / 2.0f - 150, 250, 300, 60, font);
+                    WINDOW_WIDTH / 2.0f - 200, 240, 400, 80, font);
         CreateButton(controlsButton, controlsText, "CONTROLES", 
-                    WINDOW_WIDTH / 2.0f - 150, 330, 300, 60, font);
+                    WINDOW_WIDTH / 2.0f - 200, 340, 400, 80, font);
         CreateButton(exitButton, exitText, "SALIR", 
-                    WINDOW_WIDTH / 2.0f - 150, 410, 300, 60, font);
+                    WINDOW_WIDTH / 2.0f - 200, 440, 400, 80, font);
         
         // Boton de regresar (para pantalla de controles)
         CreateButton(backButton, backText, "REGRESAR", 
                     WINDOW_WIDTH / 2.0f - 100, 500, 200, 50, font);
         
-        // Botones de Game Over
+        // Botones de Game Over - 2 arriba muy juntos, 1 abajo mas grande
         CreateButton(gameOverMenuButton, gameOverMenuText, "MENU", 
-                    WINDOW_WIDTH / 2.0f - 350, 350, 200, 60, font);
-        CreateButton(gameOverRetryButton, gameOverRetryText, "REINTENTAR", 
-                    WINDOW_WIDTH / 2.0f - 100, 350, 200, 60, font);
+                    WINDOW_WIDTH / 2.0f - 230, 320, 220, 80, font);
         CreateButton(gameOverExitButton, gameOverExitText, "SALIR", 
-                    WINDOW_WIDTH / 2.0f + 150, 350, 200, 60, font);
+                    WINDOW_WIDTH / 2.0f + 10, 320, 220, 80, font);
+        CreateButton(gameOverRetryButton, gameOverRetryText, "REINTENTAR", 
+                    WINDOW_WIDTH / 2.0f - 160, 430, 320, 85, font);
     }
     
-    // Configurar musica de fondo
-    sf::Music backgroundMusic;
-    bool musicLoaded = false;
+    // SISTEMA DE MUSICA - Menu y Juego separados
+    sf::Music menuMusic;
+    sf::Music gameMusic;
+    bool menuMusicLoaded = false;
+    bool gameMusicLoaded = false;
+    GameState currentMusicState = MENU;
     
-    if (backgroundMusic.openFromFile("assets/music/background_music.ogg")) {
-        musicLoaded = true;
-        backgroundMusic.setLoop(true);
-        backgroundMusic.setVolume(50.0f); // 50% volumen
-        backgroundMusic.play();
-        std::cout << "Musica de fondo cargada y reproduciendo" << std::endl;
+    // Cargar musica del menu
+    if (menuMusic.openFromFile("assets/music/menu_music.ogg")) {
+        menuMusicLoaded = true;
+        menuMusic.setLoop(true);
+        menuMusic.setVolume(45.0f);
+        std::cout << "Musica del menu cargada" << std::endl;
     }
-    else if (backgroundMusic.openFromFile("assets/music/background_music.wav")) {
-        musicLoaded = true;
-        backgroundMusic.setLoop(true);
-        backgroundMusic.setVolume(50.0f);
-        backgroundMusic.play();
-        std::cout << "Musica de fondo cargada y reproduciendo" << std::endl;
+    else if (menuMusic.openFromFile("assets/music/menu_music.wav")) {
+        menuMusicLoaded = true;
+        menuMusic.setLoop(true);
+        menuMusic.setVolume(45.0f);
+        std::cout << "Musica del menu cargada" << std::endl;
     }
     else {
-        std::cout << "Advertencia: No se encontro musica de fondo. El juego seguira sin musica." << std::endl;
-        std::cout << "Coloca un archivo 'background_music.ogg' en assets/music/" << std::endl;
+        std::cout << "Advertencia: No se encontro musica del menu (menu_music.ogg)" << std::endl;
     }
+    
+    // Cargar musica del juego
+    if (gameMusic.openFromFile("assets/music/game_music.ogg")) {
+        gameMusicLoaded = true;
+        gameMusic.setLoop(true);
+        gameMusic.setVolume(50.0f);
+        std::cout << "Musica del juego cargada" << std::endl;
+    }
+    else if (gameMusic.openFromFile("assets/music/game_music.wav")) {
+        gameMusicLoaded = true;
+        gameMusic.setLoop(true);
+        gameMusic.setVolume(50.0f);
+        std::cout << "Musica del juego cargada" << std::endl;
+    }
+    else {
+        std::cout << "Advertencia: No se encontro musica del juego (game_music.ogg)" << std::endl;
+    }
+    
+    // Reproducir musica del menu al inicio
+    if (menuMusicLoaded) {
+        menuMusic.play();
+        currentMusicState = MENU;
+    }
+    
+    // SISTEMA DE EFECTOS DE SONIDO
+    sf::SoundBuffer paddleHitBuffer, blockHitBuffer, wallHitBuffer, powerUpBuffer;
+    sf::SoundBuffer loseLifeBuffer, gameOverBuffer, victoryBuffer, bossHitBuffer, bossDefeatedBuffer;
+    sf::Sound paddleHitSound, blockHitSound, wallHitSound, powerUpSound;
+    sf::Sound loseLifeSound, gameOverSound, victorySound, bossHitSound, bossDefeatedSound;
+    
+    // Cargar efectos de sonido
+    if (paddleHitBuffer.loadFromFile("assets/sounds/paddle_hit.wav")) {
+        paddleHitSound.setBuffer(paddleHitBuffer);
+        paddleHitSound.setVolume(70.0f);
+    }
+    if (blockHitBuffer.loadFromFile("assets/sounds/block_hit.wav")) {
+        blockHitSound.setBuffer(blockHitBuffer);
+        blockHitSound.setVolume(60.0f);
+    }
+    if (wallHitBuffer.loadFromFile("assets/sounds/wall_hit.wav")) {
+        wallHitSound.setBuffer(wallHitBuffer);
+        wallHitSound.setVolume(50.0f);
+    }
+    if (powerUpBuffer.loadFromFile("assets/sounds/powerup.wav")) {
+        powerUpSound.setBuffer(powerUpBuffer);
+        powerUpSound.setVolume(80.0f);
+    }
+    if (loseLifeBuffer.loadFromFile("assets/sounds/lose_life.wav")) {
+        loseLifeSound.setBuffer(loseLifeBuffer);
+        loseLifeSound.setVolume(90.0f);
+    }
+    if (gameOverBuffer.loadFromFile("assets/sounds/game_over.wav")) {
+        gameOverSound.setBuffer(gameOverBuffer);
+        gameOverSound.setVolume(80.0f);
+    }
+    if (victoryBuffer.loadFromFile("assets/sounds/victory.wav")) {
+        victorySound.setBuffer(victoryBuffer);
+        victorySound.setVolume(80.0f);
+    }
+    if (bossHitBuffer.loadFromFile("assets/sounds/boss_hit.wav")) {
+        bossHitSound.setBuffer(bossHitBuffer);
+        bossHitSound.setVolume(75.0f);
+    }
+    if (bossDefeatedBuffer.loadFromFile("assets/sounds/boss_defeated.wav")) {
+        bossDefeatedSound.setBuffer(bossDefeatedBuffer);
+        bossDefeatedSound.setVolume(90.0f);
+    }
+    
+    std::cout << "Sistema de sonido inicializado" << std::endl;
     
     // Reloj para delta time
     sf::Clock clock;
@@ -299,6 +371,10 @@ int main() {
                     if (IsMouseOver(playButton, mousePos)) {
                         gameState = PLAYING;
                         std::cout << "Juego iniciado desde el menu" << std::endl;
+                        // Cambiar a musica del juego
+                        if (menuMusicLoaded) menuMusic.stop();
+                        if (gameMusicLoaded) gameMusic.play();
+                        currentMusicState = PLAYING;
                     }
                     else if (IsMouseOver(controlsButton, mousePos)) {
                         gameState = CONTROLS;
@@ -331,6 +407,10 @@ int main() {
                         boss = Boss(WINDOW_WIDTH / 2.0f, 80.0f);
                         ball.Reset(WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f);
                         ball.ResetSpeed();
+                        // Volver a musica del menu
+                        if (gameMusicLoaded) gameMusic.stop();
+                        if (menuMusicLoaded) menuMusic.play();
+                        currentMusicState = MENU;
                         
                         // Recrear bloques
                         blocks.clear();
@@ -442,13 +522,23 @@ int main() {
                 }
                 
                 // Control de musica con tecla M
-                if (event.key.code == sf::Keyboard::M && musicLoaded) {
-                    if (backgroundMusic.getStatus() == sf::Music::Playing) {
-                        backgroundMusic.pause();
-                        std::cout << "Musica pausada" << std::endl;
-                    } else {
-                        backgroundMusic.play();
-                        std::cout << "Musica reanudada" << std::endl;
+                if (event.key.code == sf::Keyboard::M) {
+                    if (currentMusicState == MENU && menuMusicLoaded) {
+                        if (menuMusic.getStatus() == sf::Music::Playing) {
+                            menuMusic.pause();
+                            std::cout << "Musica pausada" << std::endl;
+                        } else {
+                            menuMusic.play();
+                            std::cout << "Musica reanudada" << std::endl;
+                        }
+                    } else if ((currentMusicState == PLAYING || currentMusicState == BOSS_FIGHT) && gameMusicLoaded) {
+                        if (gameMusic.getStatus() == sf::Music::Playing) {
+                            gameMusic.pause();
+                            std::cout << "Musica pausada" << std::endl;
+                        } else {
+                            gameMusic.play();
+                            std::cout << "Musica reanudada" << std::endl;
+                        }
                     }
                 }
                 
@@ -457,6 +547,10 @@ int main() {
                     gameState = MENU;
                     gameStarted = false;
                     gameOver = false;
+                    // Volver a musica del menu
+                    if (gameMusicLoaded) gameMusic.stop();
+                    if (menuMusicLoaded) menuMusic.play();
+                    currentMusicState = MENU;
                 }
                 
                 if (event.key.code == sf::Keyboard::R && gameOver) {
@@ -519,6 +613,7 @@ int main() {
                 if (powerup.GetBounds().intersects(paddle.GetBounds())) {
                     PowerUpType type = powerup.GetType();
                     powerup.Deactivate();
+                    powerUpSound.play();
                     
                     switch(type) {
                         case PowerUpType::EXTRA_LIFE:
@@ -579,16 +674,19 @@ int main() {
             if (ballPos.x - BALL_RADIUS < 0) {
                 ball.ReverseX();
                 ball.SetPosition(BALL_RADIUS, ballPos.y); // Reposicionar fuera de la pared
+                wallHitSound.play();
             }
             // Pared derecha
             if (ballPos.x + BALL_RADIUS > WINDOW_WIDTH) {
                 ball.ReverseX();
                 ball.SetPosition(WINDOW_WIDTH - BALL_RADIUS, ballPos.y); // Reposicionar fuera de la pared
+                wallHitSound.play();
             }
             // Pared superior
             if (ballPos.y - BALL_RADIUS < 0) {
                 ball.ReverseY();
                 ball.SetPosition(ballPos.x, BALL_RADIUS); // Reposicionar fuera de la pared
+                wallHitSound.play();
             }
             
             // Pelota cayo
@@ -596,11 +694,13 @@ int main() {
                 // Solo perder vida si no hay pelotas extra
                 if (extraBalls.empty()) {
                     lives--;
+                    loseLifeSound.play();
                     std::cout << "Vida perdida! Vidas restantes: " << lives << std::endl;
                     
                     if (lives <= 0) {
                         gameOver = true;
                         victory = false;
+                        gameOverSound.play();
                         std::cout << "Game Over! Puntuacion final: " << score << std::endl;
                     } else {
                         ball.Reset(WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f);
@@ -618,6 +718,7 @@ int main() {
             bool hitTop;
             if (CheckCollision(ball, paddle.GetBounds(), hitTop)) {
                 ball.ReverseY();
+                paddleHitSound.play();
                 
                 // Modificar angulo basado en donde golpeo el paddle
                 sf::Vector2f paddlePos = paddle.GetPosition();
@@ -638,6 +739,7 @@ int main() {
                         sf::Vector2f blockPos = sf::Vector2f(block.GetBounds().left + block.GetBounds().width / 2,
                                                               block.GetBounds().top + block.GetBounds().height / 2);
                         block.Destroy();
+                        blockHitSound.play();
                         score += block.GetPoints();
                         std::cout << "Bloque destruido! Puntos: " << score << std::endl;
                         
@@ -839,6 +941,7 @@ int main() {
             bool hitTop;
             if (boss.IsAlive() && CheckCollision(ball, boss.GetBounds(), hitTop)) {
                 boss.TakeDamage(BOSS_DAMAGE_PER_HIT);
+                bossHitSound.play();
                 ball.ReverseY();
                 
                 // Reposicionar pelota ligeramente fuera del boss para colision mas natural
@@ -855,6 +958,7 @@ int main() {
                 // Continuar juego cuando boss es derrotado
                 if (!boss.IsAlive() && !bossDefeated) {
                     bossDefeated = true;
+                    bossDefeatedSound.play();
                     score += 50; // Bonus por derrotar al boss
                     lastBossScore = score; // Marcar para proximo boss en +1000 puntos
                     gameState = PLAYING;
@@ -905,7 +1009,7 @@ int main() {
         }
         
         // Renderizado
-        window.clear(sf::Color(20, 20, 40));
+        window.clear(sf::Color(10, 0, 40));  // Morado oscuro retro
         
         if (gameState == MENU) {
             // Dibujar menu principal
@@ -916,21 +1020,21 @@ int main() {
                 sf::Vector2i mousePos = sf::Mouse::getPosition(window);
                 
                 if (IsMouseOver(playButton, mousePos)) {
-                    playButton.setFillColor(sf::Color(100, 100, 150));
+                    playButton.setFillColor(sf::Color(255, 0, 255));  // Magenta brillante hover
                 } else {
-                    playButton.setFillColor(sf::Color(70, 70, 100));
+                    playButton.setFillColor(sf::Color(25, 25, 80));  // Azul oscuro retro
                 }
                 
                 if (IsMouseOver(controlsButton, mousePos)) {
-                    controlsButton.setFillColor(sf::Color(100, 100, 150));
+                    controlsButton.setFillColor(sf::Color(255, 0, 255));  // Magenta brillante hover
                 } else {
-                    controlsButton.setFillColor(sf::Color(70, 70, 100));
+                    controlsButton.setFillColor(sf::Color(25, 25, 80));
                 }
                 
                 if (IsMouseOver(exitButton, mousePos)) {
-                    exitButton.setFillColor(sf::Color(100, 100, 150));
+                    exitButton.setFillColor(sf::Color(255, 0, 255));  // Magenta brillante hover
                 } else {
-                    exitButton.setFillColor(sf::Color(70, 70, 100));
+                    exitButton.setFillColor(sf::Color(25, 25, 80));
                 }
                 
                 window.draw(playButton);
@@ -947,8 +1051,10 @@ int main() {
                 sf::Text controlsTitle;
                 controlsTitle.setFont(font);
                 controlsTitle.setString("CONTROLES");
-                controlsTitle.setCharacterSize(48);
-                controlsTitle.setFillColor(sf::Color::Cyan);
+                controlsTitle.setCharacterSize(64);  // Titulo mas grande
+                controlsTitle.setFillColor(sf::Color(255, 0, 255));  // Magenta retro
+                controlsTitle.setOutlineThickness(3);
+                controlsTitle.setOutlineColor(sf::Color(0, 255, 255));  // Cyan
                 sf::FloatRect ctBounds = controlsTitle.getLocalBounds();
                 controlsTitle.setOrigin(ctBounds.left + ctBounds.width / 2.0f, 
                                        ctBounds.top + ctBounds.height / 2.0f);
@@ -957,8 +1063,8 @@ int main() {
                 
                 sf::Text controlsList;
                 controlsList.setFont(font);
-                controlsList.setCharacterSize(24);
-                controlsList.setFillColor(sf::Color::White);
+                controlsList.setCharacterSize(22);
+                controlsList.setFillColor(sf::Color(255, 255, 0));  // Amarillo brillante
                 controlsList.setString(
                     "FLECHA IZQUIERDA: Mover paleta a la izquierda\n\n"
                     "FLECHA DERECHA: Mover paleta a la derecha\n\n"
@@ -973,9 +1079,9 @@ int main() {
                 // Boton de regresar con hover
                 sf::Vector2i mousePos = sf::Mouse::getPosition(window);
                 if (IsMouseOver(backButton, mousePos)) {
-                    backButton.setFillColor(sf::Color(100, 100, 150));
+                    backButton.setFillColor(sf::Color(255, 0, 255));  // Magenta hover
                 } else {
-                    backButton.setFillColor(sf::Color(70, 70, 100));
+                    backButton.setFillColor(sf::Color(25, 25, 80));  // Azul oscuro retro
                 }
                 
                 window.draw(backButton);
