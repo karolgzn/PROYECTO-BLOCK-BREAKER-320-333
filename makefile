@@ -40,8 +40,8 @@ $(BIN_DIR)/%.o: $(SRC_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 run: $(TARGET)
-	@echo "Abriendo Arkanoid con el explorador de Windows..."
-	@explorer.exe "$(shell cygpath -w $(CURDIR)/$(TARGET))"
+	@echo "Ejecutando Arkanoid..."
+	@cd $(CURDIR) && ./$(TARGET)
 
 clean:
 	rm -rf $(BIN_DIR)/*.o $(TARGET)

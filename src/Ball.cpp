@@ -42,6 +42,10 @@ void Ball::ReverseY() {
     velocity.y = -velocity.y;
 }
 
+void Ball::SetPosition(float x, float y) {
+    shape.setPosition(x, y);
+}
+
 sf::Vector2f Ball::GetPosition() const {
     return shape.getPosition();
 }
@@ -70,6 +74,16 @@ void Ball::IncreaseSpeed(float percentage) {
 
 void Ball::ResetSpeed() {
     speed = 300.0f;
+}
+
+void Ball::SetSpeed(float newSpeed) {
+    speed = newSpeed;
+    // Actualizar velocidad manteniendo dirección
+    float currentMagnitude = std::sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+    if (currentMagnitude > 0) {
+        sf::Vector2f direction = velocity / currentMagnitude;
+        velocity = direction * speed;
+    }
 }
 
 float Ball::GetSpeed() const {
